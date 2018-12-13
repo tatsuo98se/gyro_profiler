@@ -8,9 +8,27 @@ import json
 import time
 from collections import deque
 import threading
+from enum import IntEnum, auto
+
+class Gyro(IntEnum):
+    GX=0
+    GY=auto()
+    GZ=auto()
+    AX=auto()
+    AY=auto()
+    AZ=auto()
 
 g_is_stop = False
 g_lock = threading.Lock()
+g_data_label = [
+    'gx',
+    'gy',
+    'gz',
+    'ax',
+    'ay',
+    'az',
+]
+
 
 def gyro_receive_loop(gyro):
     context = zmq.Context()
@@ -24,19 +42,19 @@ def gyro_receive_loop(gyro):
         data = json.loads(rd)
 
         g_lock.acquire()
-        append_and_pop(gyro[0], data['gx'])
-        append_and_pop(gyro[1], data['gy'])
-        append_and_pop(gyro[2], data['gz'])
-        append_and_pop(gyro[3], data['ax'])
-        append_and_pop(gyro[4], data['ay'])
-        append_and_pop(gyro[5], data['az'])
+        append_and_pop(gyro[Gyro.GX], data[g_data_label[Gyro.GX]])
+        append_and_pop(gyro[Gyro.GY], data[g_data_label[Gyro.GY]])
+        append_and_pop(gyro[Gyro.GZ], data[g_data_label[Gyro.GZ]])
+        append_and_pop(gyro[Gyro.AX], data[g_data_label[Gyro.AX]])
+        append_and_pop(gyro[Gyro.AY], data[g_data_label[Gyro.AY]])
+        append_and_pop(gyro[Gyro.AZ], data[g_data_label[Gyro.AZ]])
         g_lock.release()
 
 
 def plots(ax, x, graphs):
     ret = []
-    for graph in graphs:
-        ret.extend(ax.plot(x,graph))
+    for i, graph in enumerate(graphs):
+        ret.extend(ax.plot(x,graph, label=g_data_label[i]))
     return ret
 
 def append_and_pop(list, newvalue):
@@ -52,6 +70,7 @@ def pause_plot():
     gyro = [deque([0 for _ in range(xsize)]) for _ in range(6)]
 
     lines = plots(ax, x, gyro)
+    plt.legend(loc=2)
 
     th = threading.Thread(name="gyro_receive_loop", target=gyro_receive_loop, args=(gyro,))
     th.setDaemon(True)
